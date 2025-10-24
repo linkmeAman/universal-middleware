@@ -1,0 +1,107 @@
+server:
+  host: 0.0.0.0
+  port: 8080
+
+websocket:
+  host: 0.0.0.0
+  port: 8081
+
+command:
+  max_workers: 10
+  queue_size: 1000
+  default_timeout: 30s
+
+commandservice:
+  host: 0.0.0.0
+  port: 8082
+  read_timeout: 30s
+  write_timeout: 30s
+  tls:
+    enabled: false
+
+processor:
+  host: 0.0.0.0
+  port: 8083
+  read_timeout: 30s
+  write_timeout: 30s
+  tls:
+    enabled: false
+
+cache_updater:
+  host: 0.0.0.0
+  port: 8084
+  read_timeout: 30s
+  write_timeout: 30s
+  tls:
+    enabled: false
+
+redis:
+  addresses:
+    - localhost:6379
+  password: ""
+  db: 0
+  pool_size: 100
+  min_idle_conns: 10
+  conn_max_lifetime: 5m
+
+kafka:
+  enabled: true
+  brokers:
+    - localhost:9092
+  group_id: universal-middleware
+  version: "3.6.0"
+  sasl_enabled: false
+  consumer:
+    min_bytes: 1
+    max_bytes: 10485760
+    max_wait: 5s
+    fetch_min: 1
+    fetch_default: 1048576
+    retry_backoff: 100ms
+    max_retries: 3
+    topics:
+      - events
+      - commands
+      - cache
+  producer:
+    compression: snappy
+    max_message_bytes: 1048576
+    retry_backoff: 100ms
+    max_retries: 3
+
+database:
+  primary:
+    host: localhost
+    port: 5432
+    database: middleware
+    username: postgres
+    password: postgres
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: 30m
+  replica:
+    host: localhost-replica
+    port: 5432
+    database: middleware
+    username: postgres
+    password: postgres
+    max_open_conns: 100
+    max_idle_conns: 20
+    conn_max_lifetime: 30m
+
+auth:
+  jwt_issuer: https://auth.example.com
+  jwt_audience: universal-middleware
+  opa_endpoint: http://localhost:8181
+  opa_policy: middleware/authz
+
+observability:
+  enabled: false
+  metrics_port: 9090
+  metrics_path: /metrics
+  tracing:
+    enabled: false
+    endpoint: http://localhost:4318
+    service_name: universal-middleware
+    schema_url: https://opentelemetry.io/schemas/1.21.0
+    disable: true  # Temporarily disable tracing

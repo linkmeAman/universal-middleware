@@ -1,0 +1,84 @@
+{
+  "project": "Universal Middleware",
+  "version": "1.0.0",
+  "architecture": "CQRS + Event-Driven + Cache-First",
+  "language": "Go",
+  "phases": [
+    {
+      "id": 1,
+      "name": "Foundation",
+      "duration_weeks": 2,
+      "modules": [
+        {
+          "name": "pkg/config",
+          "purpose": "Configuration management",
+          "dependencies": ["viper", "envconfig"],
+          "interfaces": ["Config", "Load()"],
+          "deliverable": "Unified config loader"
+        },
+        {
+          "name": "pkg/logger",
+          "purpose": "Structured logging",
+          "dependencies": ["zap"],
+          "interfaces": ["Logger", "WithContext()"],
+          "deliverable": "Context-aware logger"
+        },
+        {
+          "name": "pkg/metrics",
+          "purpose": "Prometheus metrics",
+          "dependencies": ["prometheus/client_golang"],
+          "interfaces": ["Metrics", "ObserveHTTP()"],
+          "deliverable": "Custom metrics registration"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Cache Layer",
+      "duration_weeks": 2,
+      "modules": [
+        {
+          "name": "internal/cache/redis",
+          "purpose": "Redis client with pooling",
+          "dependencies": ["go-redis/v9"],
+          "interfaces": ["RedisCache", "GetOrFetch()"],
+          "deliverable": "Connection pooling, retry logic"
+        },
+        {
+          "name": "internal/cache/singleflight",
+          "purpose": "Stampede prevention",
+          "dependencies": ["golang.org/x/sync/singleflight"],
+          "interfaces": ["SingleFlight", "Do()"],
+          "deliverable": "Deduplicate concurrent fetches"
+        }
+      ]
+    }
+  ],
+  "execution_steps": [
+    {
+      "step": 1,
+      "action": "Initialize Go module and directory structure",
+      "command": "go mod init && mkdir -p cmd internal pkg api"
+    },
+    {
+      "step": 2,
+      "action": "Generate configuration scaffolding",
+      "files": ["pkg/config/config.go", "config.yaml"]
+    },
+    {
+      "step": 3,
+      "action": "Implement logging and metrics infrastructure",
+      "files": ["pkg/logger/logger.go", "pkg/metrics/metrics.go"]
+    },
+    {
+      "step": 4,
+      "action": "Build cache layer with single-flight",
+      "files": ["internal/cache/redis.go", "internal/cache/service.go"]
+    },
+    {
+      "step": 5,
+      "action": "Create API Gateway with middleware chain",
+      "files": ["cmd/api-gateway/main.go", "internal/api/handlers/entity.go"]
+    }
+  ]
+}

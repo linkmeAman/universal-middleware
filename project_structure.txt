@@ -1,0 +1,57 @@
+universal-middleware/
+├── cmd/
+│   ├── api-gateway/          # HTTP/gRPC server entry point
+│   ├── command-service/      # Write path service
+│   ├── processor/            # Event consumer workers
+│   ├── cache-updater/        # Cache invalidation consumer
+│   └── ws-hub/               # WebSocket server
+├── internal/
+│   ├── api/                  # HTTP handlers and routing
+│   │   ├── handlers/
+│   │   ├── middleware/
+│   │   └── validation/
+│   ├── cache/                # Cache abstraction layer
+│   │   ├── redis.go
+│   │   ├── singleflight.go
+│   │   └── strategies.go
+│   ├── command/              # Command handling & outbox
+│   │   ├── service.go
+│   │   ├── outbox.go
+│   │   └── idempotency.go
+│   ├── events/               # Event types and publishing
+│   │   ├── publisher.go
+│   │   ├── consumer.go
+│   │   └── schemas/
+│   ├── auth/                 # Authentication & authorization
+│   │   ├── oauth.go
+│   │   ├── opa.go
+│   │   └── jwt.go
+│   ├── adapter/              # Backend connectors
+│   │   ├── database.go
+│   │   ├── grpc.go
+│   │   └── rest.go
+│   ├── websocket/            # WebSocket hub implementation
+│   │   ├── hub.go
+│   │   ├── client.go
+│   │   └── subscription.go
+│   └── domain/               # Business entities
+│       └── entity.go
+├── pkg/
+│   ├── config/               # Configuration management
+│   ├── logger/               # Structured logging wrapper
+│   ├── metrics/              # Prometheus metrics
+│   ├── tracing/              # OpenTelemetry setup
+│   ├── circuit/              # Circuit breaker implementation
+│   └── retry/                # Retry logic with backoff
+├── api/
+│   ├── openapi/              # OpenAPI specs
+│   └── proto/                # gRPC protobuf definitions
+├── migrations/               # Database migrations
+├── deployments/
+│   ├── k8s/                  # Kubernetes manifests
+│   ├── terraform/            # Infrastructure as code
+│   └── docker/               # Dockerfiles
+└── test/
+    ├── integration/
+    ├── load/
+    └── chaos/
