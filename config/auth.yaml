@@ -1,0 +1,11 @@
+auth:
+  oauth2:
+    enabled: true
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+    redirect_url: "http://localhost:8080/auth/callback"
+    issuer: "https://accounts.google.com"
+    scopes:
+      - "openid"
+      - "profile"
+      - "email"

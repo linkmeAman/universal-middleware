@@ -13,13 +13,16 @@ import (
 // Middleware wraps common dependencies for all middleware
 type Middleware struct {
 	log     *logger.Logger
+	logger  *zap.Logger
 	metrics *metrics.Metrics
 }
 
 // New creates a new Middleware instance
 func New(log *logger.Logger, m *metrics.Metrics) *Middleware {
+	zapLogger, _ := zap.NewProduction()
 	return &Middleware{
 		log:     log,
+		logger:  zapLogger,
 		metrics: m,
 	}
 }

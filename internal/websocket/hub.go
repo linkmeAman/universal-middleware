@@ -155,3 +155,11 @@ func (h *Hub) GetRoomCount(room string) int {
 	}
 	return 0
 }
+
+// ConnectionCount returns the total number of connected clients
+func (h *Hub) ConnectionCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	return len(h.clients)
+}

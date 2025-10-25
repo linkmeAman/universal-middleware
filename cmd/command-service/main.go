@@ -6,9 +6,8 @@ import (
 )
 
 func main() {
-	if err := Run(); err != nil {
+	if err := run(); err != nil {
 		fmt.Printf("Service error: %v\n", err)
 		os.Exit(1)
 	}
-	os.Exit(0)
 }

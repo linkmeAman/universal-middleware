@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -48,24 +49,36 @@ func main() {
 	hub := ws.NewHub(log, m)
 	go hub.Run()
 
-	// WebSocket handler
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		handleWebSocket(hub, w, r, log)
-	})
-
-	// Health check endpoint
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("healthy"))
-	})
+	// Handlers are now set up in the router above
 
 	// Start server
 	wsPort := cfg.Websocket.Port
 	if wsPort == 0 {
 		wsPort = 8081 // Default to 8081 if not configured
 	}
+
+	router := http.NewServeMux()
+
+	// Add WebSocket handler
+	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		handleWebSocket(hub, w, r, log)
+	})
+
+	// Add health check handler
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":      "healthy",
+			"service":     "ws-hub",
+			"version":     "1.0.0",
+			"connections": hub.ConnectionCount(),
+		})
+	})
+
 	srv := &http.Server{
-		Addr: fmt.Sprintf("%s:%d", cfg.Websocket.Host, wsPort),
+		Addr:    fmt.Sprintf("%s:%d", cfg.Websocket.Host, wsPort),
+		Handler: router,
 	}
 
 	go func() {

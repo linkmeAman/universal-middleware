@@ -126,7 +126,7 @@ fi
 
 # Start services in order with their respective ports
 start_service "api-gateway" 8080 || exit 1
-start_service "ws-hub" 8081 || exit 1
+start_service "ws-hub" 8085 || exit 1
 start_service "command-service" 8082 || exit 1
 start_service "processor" 8083 || exit 1
 start_service "cache-updater" 8084 || exit 1
@@ -208,7 +208,7 @@ check_service_health() {
 
 # Final status check
 log "\nChecking final service status..." "$YELLOW"
-services=("api-gateway:8080" "ws-hub:8081" "command-service:8082" "processor:8083" "cache-updater:8084")
+services=("api-gateway:8080" "ws-hub:8085" "command-service:8082" "processor:8083" "cache-updater:8084")
 
 failed_services=()
 for service_port in "${services[@]}"; do

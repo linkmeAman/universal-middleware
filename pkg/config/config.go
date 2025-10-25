@@ -19,6 +19,19 @@ type Config struct {
 	Observability  ObservabilityConfig
 	Command        CommandConfig
 	Outbox         OutboxConfig
+	Backends       []BackendConfig `mapstructure:"backends"`
+	RateLimit      RateLimitConfig `mapstructure:"ratelimit"`
+}
+
+type RateLimitConfig struct {
+	Enabled   bool          `mapstructure:"enabled"`
+	MaxTokens int           `mapstructure:"max_tokens"`
+	Window    time.Duration `mapstructure:"window"`
+	BurstSize int           `mapstructure:"burst_size"`
+}
+
+type BackendConfig struct {
+	URL string `mapstructure:"url"`
 }
 
 type CommandConfig struct {
@@ -97,10 +110,20 @@ type ConnectionConfig struct {
 }
 
 type AuthConfig struct {
-	JWTIssuer   string `mapstructure:"jwt_issuer"`
-	JWTAudience string `mapstructure:"jwt_audience"`
-	OPAEndpoint string `mapstructure:"opa_endpoint"`
-	OPAPolicy   string `mapstructure:"opa_policy"`
+	JWTIssuer   string        `mapstructure:"jwt_issuer"`
+	JWTAudience string        `mapstructure:"jwt_audience"`
+	OPAEndpoint string        `mapstructure:"opa_endpoint"`
+	OPAPolicy   string        `mapstructure:"opa_policy"`
+	Session     SessionConfig `mapstructure:"session"`
+}
+
+type SessionConfig struct {
+	Secure   bool   `mapstructure:"secure"`
+	MaxAge   int    `mapstructure:"max_age"`
+	HTTPOnly bool   `mapstructure:"http_only"`
+	Domain   string `mapstructure:"domain"`
+	SameSite string `mapstructure:"same_site"`
+	Path     string `mapstructure:"path"`
 }
 
 type ObservabilityConfig struct {
@@ -147,6 +170,12 @@ func Load() (*Config, error) {
 	viper.SetDefault("server.write_timeout", "30s")
 	viper.SetDefault("redis.pool_size", 100)
 	viper.SetDefault("database.primary.max_open_conns", 50)
+
+	// Rate limiting defaults
+	viper.SetDefault("ratelimit.enabled", true)
+	viper.SetDefault("ratelimit.max_tokens", 100)
+	viper.SetDefault("ratelimit.window", "1m")
+	viper.SetDefault("ratelimit.burst_size", 10)
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

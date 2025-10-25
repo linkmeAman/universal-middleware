@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package middleware.v1;
+
+option go_package = "github.com/linkmeAman/universal-middleware/api/proto/v1;middlewarev1";
+
+// Command service definition
+service CommandService {
+  // SubmitCommand submits a new command for processing
+  rpc SubmitCommand(SubmitCommandRequest) returns (SubmitCommandResponse) {}
+  
+  // GetCommandStatus retrieves the status of a command
+  rpc GetCommandStatus(GetCommandStatusRequest) returns (GetCommandStatusResponse) {}
+}
+
+// Command represents a business command
+message Command {
+  string id = 1;
+  string type = 2;
+  bytes payload = 3;
+}
+
+// SubmitCommandRequest is the request for submitting a command
+message SubmitCommandRequest {
+  string type = 1;
+  bytes payload = 2;
+}
+
+// SubmitCommandResponse is the response for command submission
+message SubmitCommandResponse {
+  string command_id = 1;
+}
+
+// GetCommandStatusRequest is the request for getting command status
+message GetCommandStatusRequest {
+  string command_id = 1;
+}
+
+// GetCommandStatusResponse is the response with command status
+message GetCommandStatusResponse {
+  string command_id = 1;
+  string status = 2;
+  string error = 3;
+}

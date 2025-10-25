@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package middleware.v1;
+
+option go_package = "github.com/linkmeAman/universal-middleware/api/proto/v1;middlewarev1";
+
+// Authentication service definition
+service AuthService {
+  // Login authenticates a user and returns tokens
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+  
+  // RefreshToken refreshes an access token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {}
+  
+  // ValidateToken validates a token
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {}
+}
+
+// LoginRequest is the request for user login
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// LoginResponse contains authentication tokens
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_at = 3;
+}
+
+// RefreshTokenRequest is the request for token refresh
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+// RefreshTokenResponse contains new tokens
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_at = 3;
+}
+
+// ValidateTokenRequest is the request for token validation
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+// ValidateTokenResponse contains token validation result
+message ValidateTokenResponse {
+  bool valid = 1;
+  string subject = 2;
+  repeated string scopes = 3;
+}

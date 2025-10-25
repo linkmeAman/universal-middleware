@@ -4,29 +4,41 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/linkmeAman/universal-middleware/internal/auth"
 	"github.com/linkmeAman/universal-middleware/pkg/logger"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
-// AuthMiddleware handles request authorization using OPA policies
+// AuthMiddleware handles request authorization using OPA policies and OAuth2
 type AuthMiddleware struct {
 	log        *logger.Logger
-	authorizer *auth.OPAAuthorizer
+	authorizer auth.OPAAuthorizer
+	oauth2     auth.OAuth2Provider
+	store      sessions.Store
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware instance
-func NewAuthMiddleware(log *logger.Logger, authorizer *auth.OPAAuthorizer) *AuthMiddleware {
+func NewAuthMiddleware(log *logger.Logger, authorizer auth.OPAAuthorizer, provider auth.OAuth2Provider, store sessions.Store) *AuthMiddleware {
 	return &AuthMiddleware{
 		log:        log,
 		authorizer: authorizer,
+		oauth2:     provider,
+		store:      store,
 	}
 }
 
 // Authorize middleware checks if the request is allowed based on OPA policies
 func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip auth for login and callback routes
+		if strings.HasPrefix(r.URL.Path, "/auth/login") || strings.HasPrefix(r.URL.Path, "/auth/callback") {
+			next.ServeHTTP(w, r)
+			return
+		}
 		// Parse path into segments
 		path := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 		if len(path) == 0 {
@@ -35,15 +47,40 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 			return
 		}
 
-		// Get user from context if available
+		// Get user from session
+		session, err := m.store.Get(r, "auth-session")
+		if err != nil {
+			m.log.Error("Failed to get session", zap.Error(err))
+			m.sendError(w, "Session error")
+			return
+		}
+
 		var user *auth.User
-		if u := r.Context().Value(auth.UserContextKey); u != nil {
-			var ok bool
-			user, ok = u.(*auth.User)
-			if !ok {
-				m.log.Error("Invalid user context type")
-				m.sendError(w, "Invalid user context")
+		if session.Values["user_id"] != nil {
+			user = auth.GetUserFromSession(session)
+			if user == nil {
+				m.log.Error("Invalid user session data")
+				m.sendError(w, "Invalid session")
 				return
+			}
+
+			// Check if access token needs refresh
+			expiry, ok := session.Values["token_expiry"].(time.Time)
+			if ok && time.Until(expiry) < 5*time.Minute {
+				refreshToken, ok := session.Values["refresh_token"].(string)
+				if ok {
+					newToken, err := m.oauth2.TokenSource(r.Context(), &oauth2.Token{
+						RefreshToken: refreshToken,
+					}).Token()
+					if err == nil {
+						session.Values["access_token"] = newToken.AccessToken
+						session.Values["refresh_token"] = newToken.RefreshToken
+						session.Values["token_expiry"] = newToken.Expiry
+						session.Save(r, w)
+					} else {
+						m.log.Error("Failed to refresh token", zap.Error(err))
+					}
+				}
 			}
 		}
 

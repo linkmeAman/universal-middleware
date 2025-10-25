@@ -60,7 +60,7 @@ make build
 
 # Or start services individually:
 ./bin/api-gateway     # Port 8080
-./bin/ws-hub         # Port 8081
+./bin/ws-hub         # Port 8085
 ./bin/command-service # Port 8082
 ./bin/processor      # Port 8083
 ./bin/cache-updater  # Port 8084

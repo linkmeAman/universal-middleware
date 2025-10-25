@@ -152,7 +152,7 @@ go build -o bin/cache-updater cmd/cache-updater/main.go
 
 # Option 2: Start services individually in separate terminals
 ./bin/api-gateway     # REST API and main entry point (Port 8080)
-./bin/ws-hub         # WebSocket hub for real-time updates (Port 8081)
+./bin/ws-hub         # WebSocket hub for real-time updates (Port 8085)
 ./bin/command-service # Command processing service (Port 8082)
 ./bin/processor      # Event processor service (Port 8083)
 ./bin/cache-updater  # Cache invalidation service (Port 8084)

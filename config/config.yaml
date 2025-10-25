@@ -4,7 +4,7 @@ server:
 
 websocket:
   host: 0.0.0.0
-  port: 8081
+  port: 8085
 
 command:
   max_workers: 10
@@ -92,8 +92,35 @@ database:
 auth:
   jwt_issuer: https://auth.example.com
   jwt_audience: universal-middleware
+  jwt_key_refresh_interval: 1h
   opa_endpoint: http://localhost:8181
   opa_policy: middleware/authz
+  opa_decision_timeout: 100ms
+  oauth2:
+    provider_url: https://accounts.google.com
+    client_id: ${OAUTH2_CLIENT_ID}
+    client_secret: ${OAUTH2_CLIENT_SECRET}
+    redirect_url: ${OAUTH2_REDIRECT_URL}
+    scopes:
+      - openid
+      - email
+      - profile
+      - offline_access
+    state_expiry: 300s
+    code_verifier_length: 64
+    pkce_enabled: true
+  session:
+    secret: ${SESSION_SECRET}
+    secure: true
+    max_age: 3600
+    http_only: true
+    same_site: strict
+    domain: ${DOMAIN}
+    path: /
+    remember_me_duration: 604800
+    session_cleanup_interval: 3600
+    redis_store_enabled: true
+    redis_key_prefix: "session:"
 
 observability:
   enabled: false

@@ -1,0 +1,22 @@
+{
+    "commands": [
+        {
+            "id": "cmd-test-001",
+            "type": "create_user",
+            "payload": {
+                "username": "testuser1",
+                "email": "test1@example.com"
+            },
+            "status": "pending"
+        },
+        {
+            "id": "cmd-test-002",
+            "type": "update_profile",
+            "payload": {
+                "user_id": "usr-test-001",
+                "display_name": "Test User 1"
+            },
+            "status": "pending"
+        }
+    ]
+}

@@ -1,0 +1,4 @@
+backends:
+  - url: "http://localhost:8090"
+  - url: "http://localhost:8091"
+  - url: "http://localhost:8092"

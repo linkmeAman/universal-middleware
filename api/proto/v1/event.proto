@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package middleware.v1;
+
+option go_package = "github.com/linkmeAman/universal-middleware/api/proto/v1;middlewarev1";
+
+// Event service for real-time event streaming
+service EventService {
+  // StreamEvents creates a stream of events based on subscription
+  rpc StreamEvents(StreamEventsRequest) returns (stream Event) {}
+  
+  // PublishEvent publishes a new event
+  rpc PublishEvent(PublishEventRequest) returns (PublishEventResponse) {}
+}
+
+// Event represents a system event
+message Event {
+  string id = 1;
+  string type = 2;
+  bytes payload = 3;
+  int64 timestamp = 4;
+}
+
+// StreamEventsRequest is the request for event streaming
+message StreamEventsRequest {
+  repeated string event_types = 1;
+  string client_id = 2;
+}
+
+// PublishEventRequest is the request for publishing an event
+message PublishEventRequest {
+  string type = 1;
+  bytes payload = 2;
+}
+
+// PublishEventResponse is the response for event publishing
+message PublishEventResponse {
+  string event_id = 1;
+}

@@ -68,7 +68,7 @@ var (
 	errCh chan error
 )
 
-func Run() error {
+func run() error {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

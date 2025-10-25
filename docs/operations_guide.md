@@ -10,10 +10,11 @@
    - Provides health monitoring of all services
    - Exposes Prometheus metrics endpoint
 
-2. **WebSocket Hub** (Port 8081)
+2. **WebSocket Hub** (Port 8085)
    - Manages real-time WebSocket connections
    - Handles client message broadcasting
-   - Maintains connection state
+   - Maintains connection state and room management
+   - Provides health monitoring via JSON endpoint
 
 3. **Command Service** (Port 8082)
    - Processes business commands
@@ -37,7 +38,7 @@ Each service exposes a comprehensive health endpoint at `/health` that monitors 
 ```bash
 # Check individual services
 curl http://localhost:8080/health  # API Gateway
-curl http://localhost:8081/health  # WebSocket Hub
+curl http://localhost:8085/health  # WebSocket Hub
 curl http://localhost:8082/health  # Command Service
 curl http://localhost:8083/health  # Event Processor
 curl http://localhost:8084/health  # Cache Updater
