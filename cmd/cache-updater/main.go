@@ -43,11 +43,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	zapLogger, _ := zap.NewProduction()
 	svc, err := cacheupdater.NewService(
 		redisAddr,
 		cfg.Kafka.Brokers,
 		cfg.Kafka.Consumer.Topics[2], // Use the 'cache' topic for cache-updater
-		log,
+		zapLogger,
 	)
 	if err != nil {
 		log.Error("Failed to create service", zap.Error(err))
@@ -67,7 +68,7 @@ func main() {
 	// Health check dependencies
 	healthDeps := map[string]func() error{
 		"redis": func() error {
-			return svc.GetRedisClient().Ping(context.Background())
+			return svc.GetRedisClient().Ping(context.Background()).Err()
 		},
 		"kafka": func() error {
 			if status := svc.GetConsumerStatus(); !status.Connected {
@@ -102,7 +103,7 @@ func main() {
 	}()
 
 	// Start service
-	if err := svc.Start(); err != nil {
+	if err := svc.Start(context.Background()); err != nil {
 		log.Error("Failed to start service", zap.Error(err))
 		os.Exit(1)
 	}

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -17,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/linkmeAman/universal-middleware/internal/api/grpc"
+	"github.com/linkmeAman/universal-middleware/internal/command"
 	"github.com/linkmeAman/universal-middleware/internal/loadbalancer"
 	"github.com/linkmeAman/universal-middleware/internal/ratelimit"
 
@@ -29,6 +32,8 @@ import (
 	"github.com/linkmeAman/universal-middleware/pkg/logger"
 	"github.com/linkmeAman/universal-middleware/pkg/metrics"
 )
+
+var db *sql.DB
 
 func main() {
 	// Create a root context that can be used to gracefully shutdown goroutines
@@ -65,9 +70,6 @@ func main() {
 
 	// Create router
 	r := chi.NewRouter()
-
-	// Create middleware stack
-	mw := middleware.New(log, m)
 
 	// Initialize load balancer
 	zapLogger, _ := zap.NewProduction()
@@ -106,14 +108,12 @@ func main() {
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.Timeout(30 * time.Second))
-	r.Use(mw.RequestLogger)
-	r.Use(mw.RequestTracker)
-	r.Use(mw.MetricsCollector)
-	r.Use(mw.LoadBalancer(lb))
 
-	if rateLimiter != nil {
-		r.Use(mw.RateLimit(rateLimiter))
-	}
+	// Request logging and metrics middleware
+	requestMiddleware := middleware.New(log, m)
+	r.Use(requestMiddleware.RequestLogger)
+	r.Use(requestMiddleware.RequestTracker)
+	r.Use(requestMiddleware.MetricsCollector)
 
 	// Health check dependencies
 	healthDeps := map[string]func() error{
@@ -175,6 +175,72 @@ func main() {
 		opaAuthorizer = auth.NewDevOPAAuthorizer(log)
 		log.Info("Using development OPA authorizer")
 	}
+
+	// Add after existing routes in cmd/api-gateway/main.go
+
+	// Initialize command service
+	commandSvc, err := command.NewCommandService(db, cfg.Redis.Addresses[0], zapLogger)
+	if err != nil {
+		log.Fatal("Failed to initialize command service", zap.Error(err))
+	}
+
+	// Initialize security middleware
+	securityMw := middleware.NewSecurityMiddleware(
+		envCfg.JWTSecret,
+		cfg.Redis.Addresses[0],
+		zapLogger,
+	)
+
+	// Security middleware added only to specific routes that need it
+	commandRouter := chi.NewRouter()
+	commandRouter.Use(securityMw.RateLimitMiddleware)
+
+	// Command endpoints with rate limiting
+	commandRouter.Post("/v1/commands", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Type     string                 `json:"type"`
+			EntityID string                 `json:"entity_id"`
+			Payload  map[string]interface{} `json:"payload"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		cmd := &command.Command{
+			Type:           req.Type,
+			EntityID:       req.EntityID,
+			Payload:        req.Payload,
+			IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		}
+
+		result, err := commandSvc.SubmitCommand(r.Context(), cmd)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Location", result.Location)
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(result)
+	})
+
+	commandRouter.Get("/v1/commands/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+
+		status, err := commandSvc.GetCommandStatus(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(status)
+	})
+
+	// Mount the command router
+	r.Mount("/", commandRouter)
 
 	// Initialize auth middleware with session store and OAuth2 provider
 	authMiddleware := middleware.NewAuthMiddleware(log, opaAuthorizer, oauth2Provider, sessionStore)

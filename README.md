@@ -59,11 +59,11 @@ make build
 ./scripts/start-services.sh
 
 # Or start services individually:
-./bin/api-gateway     # Port 8080
-./bin/ws-hub         # Port 8085
-./bin/command-service # Port 8082
-./bin/processor      # Port 8083
-./bin/cache-updater  # Port 8084
+./bin/api-gateway      # Port 8080 - HTTP/gRPC API Gateway
+./bin/ws-hub          # Port 8085 - WebSocket Hub with Redis pub/sub
+./bin/command-service  # Port 8082 - Command processing service
+./bin/processor        # Port 8083 - Event processor service
+./bin/cache-updater    # Port 8084 - Cache management service
 ```
 
 ## Project Structure
@@ -82,34 +82,63 @@ universal-middleware/
 
 ## Configuration
 
-The application uses a YAML configuration file with environment variable overrides:
+The application uses a layered configuration approach:
 
-- Default config location: `./config/config.yaml`
-- Environment prefix: `UMW_`
-- Example override: `UMW_SERVER_PORT=9090`
+### 1. YAML Configuration
+- Main config: `./config/config.yaml`
+- Auth config: `./config/auth.yaml`
+- Backend config: `./config/backends.yaml`
+
+### 2. Environment Variables
+- Prefix: `UMW_`
+- Example: `UMW_SERVER_PORT=9090`
+
+### 3. Security Configuration
+- JWT secret (required): `UMW_JWT_SECRET`
+- Session secret (required): `UMW_SESSION_SECRET`
+- OAuth2 settings (optional):
+  - `UMW_OAUTH2_PROVIDER_URL`
+  - `UMW_OAUTH2_CLIENT_ID`
+  - `UMW_OAUTH2_CLIENT_SECRET`
 
 ## API Documentation
 
 ### RESTful Endpoints
 
+#### System Endpoints
 - `GET /health` - Health check with dependency status
 - `GET /metrics` - Prometheus metrics
-- `GET /v1/commands` - Command submission endpoint
-- `GET /ws` - WebSocket connection endpoint
-- `GET /events` - Server-Sent Events endpoint
+
+#### Command Endpoints
+- `POST /v1/commands` - Submit new command
+- `GET /v1/commands/{id}` - Get command status
+
+#### WebSocket Endpoints
+- `GET /ws` - WebSocket connection with JWT auth
+- `GET /ws/health` - WebSocket hub health check
+
+#### Authentication Endpoints
+- `GET /api/v1/auth/login` - OAuth2 login
+- `GET /api/v1/auth/callback` - OAuth2 callback
+- `GET /api/v1/auth/logout` - Logout
+- `GET /api/v1/userinfo` - Get user info
+- `POST /api/v1/refresh` - Refresh JWT token
 
 ### Middleware Chain
 
 1. Request ID
 2. Real IP
 3. Recovery
-4. Timeout
+4. Timeout (30s)
 5. Request Logger
 6. Request Tracker
 7. Metrics Collector
-8. Authentication (JWT)
-9. Authorization (OPA)
-10. Validation
+8. Rate Limiter (Redis-based)
+9. Authentication (JWT)
+10. Authorization (OPA)
+11. Validation
+
+Note: Rate limiting is applied selectively based on endpoint requirements. Command endpoints have their own rate limiting rules.
 
 ### Request Validation
 

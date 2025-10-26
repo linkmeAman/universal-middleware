@@ -31,24 +31,27 @@ const (
 
 // Command represents a base command structure
 type Command struct {
-	ID            string                 `json:"id"`
-	Type          string                 `json:"type"`
-	Priority      Priority               `json:"priority"`
-	Status        Status                 `json:"status"`
-	Payload       map[string]interface{} `json:"payload"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	ErrorDetails  *ErrorDetails          `json:"errorDetails,omitempty"`
-	CreatedAt     time.Time              `json:"createdAt"`
-	UpdatedAt     time.Time              `json:"updatedAt"`
-	ScheduledFor  *time.Time             `json:"scheduledFor,omitempty"`
-	ProcessedAt   *time.Time             `json:"processedAt,omitempty"`
-	CompletedAt   *time.Time             `json:"completedAt,omitempty"`
-	RetryCount    int                    `json:"retryCount"`
-	MaxRetries    int                    `json:"maxRetries"`
-	RetryBackoff  time.Duration          `json:"retryBackoff"`
-	TimeoutAfter  time.Duration          `json:"timeoutAfter"`
-	CorrelationID string                 `json:"correlationId,omitempty"`
-	UserID        string                 `json:"userId,omitempty"`
+	ID             string                 `json:"id"`
+	Type           string                 `json:"type"`
+	Priority       Priority               `json:"priority"`
+	Status         Status                 `json:"status"`
+	Payload        map[string]interface{} `json:"payload"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	ErrorDetails   *ErrorDetails          `json:"errorDetails,omitempty"`
+	CreatedAt      time.Time              `json:"createdAt"`
+	UpdatedAt      time.Time              `json:"updatedAt"`
+	ScheduledFor   *time.Time             `json:"scheduledFor,omitempty"`
+	ProcessedAt    *time.Time             `json:"processedAt,omitempty"`
+	CompletedAt    *time.Time             `json:"completedAt,omitempty"`
+	RetryCount     int                    `json:"retryCount"`
+	MaxRetries     int                    `json:"maxRetries"`
+	RetryBackoff   time.Duration          `json:"retryBackoff"`
+	TimeoutAfter   time.Duration          `json:"timeoutAfter"`
+	CorrelationID  string                 `json:"correlationId,omitempty"`
+	UserID         string                 `json:"userId,omitempty"`
+	IdempotencyKey string                 `json:"idempotencyKey,omitempty"`
+	EntityID       string                 `json:"entityId,omitempty"`
+	Error          string                 `json:"error,omitempty"`
 }
 
 // ErrorDetails holds information about command failures
