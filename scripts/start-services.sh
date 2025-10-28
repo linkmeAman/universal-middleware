@@ -16,15 +16,59 @@ log() {
     echo -e "${2:-$GREEN}$(date '+%Y-%m-%d %H:%M:%S') $1${NC}"
 }
 
+# Function to start a system service
+start_system_service() {
+    local service_name=$1
+    log "Checking $service_name..." "$YELLOW"
+    
+    if ! systemctl is-active --quiet $service_name; then
+        log "$service_name is not running, starting it..." "$YELLOW"
+        sudo systemctl start $service_name
+        
+        # Wait up to 30 seconds for the service to start
+        for i in {1..30}; do
+            if systemctl is-active --quiet $service_name; then
+                log "$service_name started successfully" "$GREEN"
+                return 0
+            fi
+            sleep 1
+        done
+        log "Failed to start $service_name" "$RED"
+        return 1
+    else
+        log "$service_name is running" "$GREEN"
+        return 0
+    fi
+}
+
 # Check dependencies
 check_dependencies() {
     log "Checking dependencies..." "$YELLOW"
     
-    # Run database migrations
-    PGPASSWORD=postgres psql -h localhost -U postgres middleware -f migrations/000006_create_outbox_table.up.sql || {
-        log "Failed to run database migrations" "$RED"
+    # Start PostgreSQL if not running
+    if ! start_system_service postgresql; then
+        log "Failed to start PostgreSQL" "$RED"
         return 1
-    }
+    fi
+    
+    # Start Redis if not running
+    if ! start_system_service redis-server; then
+        log "Failed to start Redis" "$RED"
+        return 1
+    fi
+    
+        # Run all database migrations
+    log "Running database migrations..." "$YELLOW"
+    for migration in migrations/*.up.sql; do
+        if [ -f "$migration" ]; then
+            log "Applying migration: $(basename $migration)" "$YELLOW"
+            if ! PGPASSWORD=postgres psql -h localhost -U postgres middleware -f "$migration"; then
+                log "Failed to apply migration: $(basename $migration)" "$RED"
+                return 1
+            fi
+        fi
+    done
+    log "Database migrations completed successfully" "$GREEN"
     
     # Check Redis
     if ! redis-cli ping >/dev/null 2>&1; then
@@ -41,11 +85,38 @@ check_dependencies() {
     if ! pg_isready >/dev/null 2>&1; then
         log "PostgreSQL is not running. Starting PostgreSQL..." "$YELLOW"
         sudo systemctl start postgresql
-        sleep 2
-        if ! pg_isready >/dev/null 2>&1; then
-            log "Failed to start PostgreSQL" "$RED"
+        # Wait up to 30 seconds for PostgreSQL to start
+        for i in {1..30}; do
+            if pg_isready >/dev/null 2>&1; then
+                log "PostgreSQL started successfully" "$GREEN"
+                break
+            fi
+            if [ $i -eq 30 ]; then
+                log "Failed to start PostgreSQL after 30 seconds" "$RED"
+                return 1
+            fi
+            sleep 1
+        done
+    fi
+
+    # Ensure PostgreSQL is accepting connections
+    if ! PGPASSWORD=postgres psql -h localhost -U postgres -c '\l' >/dev/null 2>&1; then
+        log "Configuring PostgreSQL for local connections..." "$YELLOW"
+        # Ensure PostgreSQL is configured for local connections
+        sudo sed -i 's/^host.*all.*all.*127.0.0.1\/32.*ident$/host    all    all    127.0.0.1\/32    md5/' /etc/postgresql/*/main/pg_hba.conf
+        sudo systemctl restart postgresql
+        sleep 5
+        
+        if ! PGPASSWORD=postgres psql -h localhost -U postgres -c '\l' >/dev/null 2>&1; then
+            log "Failed to configure PostgreSQL for local connections" "$RED"
             return 1
         fi
+    fi
+
+    # Create database if it doesn't exist
+    if ! PGPASSWORD=postgres psql -h localhost -U postgres -lqt | cut -d \| -f 1 | grep -qw middleware; then
+        log "Creating middleware database..." "$YELLOW"
+        PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE middleware;'
     fi
     
     # Check Kafka
@@ -69,6 +140,20 @@ check_dependencies() {
             --partitions 1 \
             --replication-factor 1 >/dev/null 2>&1
     done
+
+    # Check OPA
+    if ! pgrep -f "opa run --server" >/dev/null; then
+        log "Starting OPA server..." "$YELLOW"
+        nohup opa run --server --addr :8181 > $LOG_DIR/opa.log 2>&1 &
+        sleep 2
+        if ! curl -s http://localhost:8181/health >/dev/null 2>&1; then
+            log "Failed to start OPA server" "$RED"
+            return 1
+        fi
+        log "OPA server started successfully" "$GREEN"
+    else
+        log "OPA server is already running" "$GREEN"
+    fi
 
     return 0
 }

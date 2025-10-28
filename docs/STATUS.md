@@ -8,10 +8,11 @@
    - Basic routing
    - Health checks
 
-2. WebSocket Hub (Port 8081)
-   - WebSocket connections
-   - Client message handling
-   - Real-time communication
+2. WebSocket Hub (Port 8085)
+   - WebSocket connections with Redis pub/sub
+   - Scalable real-time messaging
+   - Room-based subscriptions
+   - Automatic reconnection handling
 
 ### Working Services (All Operational)
 1. Command Service (Port 8082)
@@ -97,6 +98,26 @@
    - Configure Prometheus metrics
    - Set up Grafana dashboards
    - Implement proper logging
+
+## Latest Updates
+
+1. Security Enhancements
+   - Rate limiting per client/user
+   - JWT validation for WebSocket connections
+   - Redis-based distributed rate limiting
+   - Configurable security policies
+
+2. WebSocket Improvements
+   - Redis pub/sub for scalable messaging
+   - Room-based subscription model
+   - Automatic reconnection handling
+   - Binary message support
+
+3. Command Service Enhancements
+   - Idempotent command processing
+   - Command status tracking
+   - Outbox pattern implementation
+   - Async command execution
 
 ## Known Issues
 

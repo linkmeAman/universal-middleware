@@ -92,6 +92,9 @@ class RealtimeClient {
   constructor(config) {
     this.ws = new WebSocket(`ws://your-middleware:8085/ws?token=${config.token}`);
     this.subscriptions = new Map();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = config.maxReconnectAttempts || 5;
+    this.setupReconnection();
     
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -107,9 +110,35 @@ class RealtimeClient {
     this.subscriptions.set(topic, callback);
   }
 
+  setupReconnection() {
+    this.ws.onclose = () => {
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        setTimeout(() => {
+          this.reconnectAttempts++;
+          this.ws = new WebSocket(`ws://your-middleware:8085/ws?token=${this.config.token}`);
+          this.setupReconnection();
+          
+          // Resubscribe to previous topics
+          for (let [topic] of this.subscriptions) {
+            this.subscribe(topic);
+          }
+        }, Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000));
+      }
+    };
+
+    this.ws.onopen = () => {
+      this.reconnectAttempts = 0;
+    };
+  }
+
   handleMessage(data) {
     const callback = this.subscriptions.get(data.topic);
     if (callback) callback(data);
+  }
+
+  disconnect() {
+    this.maxReconnectAttempts = 0; // Prevent reconnection
+    this.ws.close();
   }
 }
 ```
@@ -353,6 +382,40 @@ class CommandProcessor {
       if (status.state === 'completed') return status.result;
       if (status.state === 'failed') throw new Error(status.error);
       await sleep(1000);
+    }
+  }
+}
+```
+
+## Error Handling
+
+### WebSocket Errors
+```javascript
+class WebSocketError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
+class RealtimeClient {
+  handleError(error) {
+    switch (error.code) {
+      case 'RATE_LIMITED':
+        // Wait before reconnecting
+        setTimeout(() => this.reconnect(), 5000);
+        break;
+      case 'INVALID_TOKEN':
+        // Refresh token and reconnect
+        this.refreshToken().then(() => this.reconnect());
+        break;
+      case 'SUBSCRIPTION_ERROR':
+        // Remove failed subscription
+        this.subscriptions.delete(error.topic);
+        break;
+      default:
+        // Log unhandled error
+        console.error('WebSocket error:', error);
     }
   }
 }

@@ -22,6 +22,9 @@ type Config struct {
 
 	// Domain configuration
 	Domain string
+
+	// JWT configuration
+	JWTSecret string
 }
 
 // LoadConfig loads environment variables from .env file and environment
@@ -65,6 +68,11 @@ func LoadConfig() (*Config, error) {
 		domain = "localhost"
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is required")
+	}
+
 	return &Config{
 		SessionSecret:      sessionSecret,
 		OAuth2ProviderURL:  oauth2ProviderURL,
@@ -72,6 +80,7 @@ func LoadConfig() (*Config, error) {
 		OAuth2ClientSecret: oauth2ClientSecret,
 		OAuth2RedirectURL:  oauth2RedirectURL,
 		Domain:             domain,
+		JWTSecret:          jwtSecret,
 	}, nil
 }
 

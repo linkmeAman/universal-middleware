@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/gorilla/websocket"
+	"github.com/linkmeAman/universal-middleware/internal/api/middleware"
 	ws "github.com/linkmeAman/universal-middleware/internal/websocket"
 	"github.com/linkmeAman/universal-middleware/pkg/config"
 	"github.com/linkmeAman/universal-middleware/pkg/logger"
@@ -43,10 +44,22 @@ func main() {
 	defer log.Sync()
 
 	// Initialize metrics
-	m := metrics.New("ws_hub")
+	metrics.New("ws_hub")
 
-	// Create WebSocket hub
-	hub := ws.NewHub(log, m)
+	// Create enhanced WebSocket hub with debug logger
+	zapLogger, _ := zap.NewDevelopment()
+	hub, err := ws.NewEnhancedHub(cfg.Redis.Addresses[0], zapLogger)
+	if err != nil {
+		log.Fatal("Failed to create WebSocket hub", zap.Error(err))
+	}
+
+	// Initialize security middleware
+	securityMw := middleware.NewSecurityMiddleware(
+		"your-secret-key", // TODO: Get from config or environment
+		cfg.Redis.Addresses[0],
+		zapLogger,
+	)
+
 	go hub.Run()
 
 	// Handlers are now set up in the router above
@@ -54,14 +67,22 @@ func main() {
 	// Start server
 	wsPort := cfg.Websocket.Port
 	if wsPort == 0 {
-		wsPort = 8081 // Default to 8081 if not configured
+		wsPort = 8085 // Default to 8085 if not configured
 	}
 
 	router := http.NewServeMux()
 
 	// Add WebSocket handler
 	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		handleWebSocket(hub, w, r, log)
+		// Authenticate WebSocket connection
+		userID, err := securityMw.AuthenticateWebSocket(r)
+		if err != nil {
+			log.Warn("WebSocket authentication failed", zap.Error(err))
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		// Pass authenticated userID to handleWebSocket
+		handleWebSocket(hub, w, r, log, userID)
 	})
 
 	// Add health check handler
@@ -103,7 +124,7 @@ func main() {
 	log.Info("Server stopped")
 }
 
-func handleWebSocket(hub *ws.Hub, w http.ResponseWriter, r *http.Request, log *logger.Logger) {
+func handleWebSocket(hub *ws.EnhancedHub, w http.ResponseWriter, r *http.Request, log *logger.Logger, userID string) {
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -111,9 +132,9 @@ func handleWebSocket(hub *ws.Hub, w http.ResponseWriter, r *http.Request, log *l
 		return
 	}
 
-	// Get user ID from request (you should implement proper authentication)
-	userID := r.URL.Query().Get("user_id")
+	// userID is already provided from the authentication middleware
 	if userID == "" {
+		log.Error("Missing user ID")
 		conn.Close()
 		return
 	}
